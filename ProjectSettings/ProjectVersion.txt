@@ -1,0 +1,6 @@
+m_EditorVersion: 2026.0.0f16
+m_EditorVersionWithRevision: 2026.0.0f16
+UnityVersion: 2026.3.0f16
+UnityVersionRelease: 2026.3
+XcodeVersion: 9.0.0
+BundleVersion: 2026.3.0f16

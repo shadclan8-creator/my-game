@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "com.unity.collab-proxy": "2.5.1",
+    "com.unity.sysroot": "2.0.7",
+    "com.unity.testframework": "1.1.33",
+    "com.unity.visualscripting": "1.0.0",
+    "com.unity.textmeshfont": "3.0.0-preview",
+    "com.unity.timeline": "1.7.5",
+    "com.unity.xr.legacyinputhelpers": "2.1.2",
+    "com.unity.xr.openxr": "1.7.4"
+  },
+  "scopedRegistries": [],
+  "regressedPackage": false,
+  "version": 1
+}
