@@ -1,4 +1,5 @@
 using UnityEngine;
+using TimesBaddestCat.Tests.Helpers;
 
 namespace TimesBaddestCat.Core
 {
@@ -14,10 +15,9 @@ namespace TimesBaddestCat.Core
         [Header("Combo Constants")]
         private const float COMBO_DECAY_RATE = 0.3f;
         private const float MAX_COMBO_TIMER = 30f;
-        private const float MAX_COMBO_MULTIPLIER = 50f;
-        private const float MILESTONE_1X = 10f;
-        private const float MILESTONE_2_5X = 25f;
-        private const float MILESTONE_5_0X = 50f;
+        private const float MILESTONE_1_MULTIPLIER = 10f;
+        private const float MILESTONE_2_MULTIPLIER = 25f;
+        private const float MILESTONE_5_MULTIPLIER = 50f;
 
         #endregion
 
@@ -25,26 +25,59 @@ namespace TimesBaddestCat.Core
 
         [Header("Combo State")]
         [SerializeField]
-        private int currentComboCount = 0;
+        private int currentCombo = 0;
         [SerializeField]
         private float comboMultiplier = 1f;
         [SerializeField]
-        private float comboTimer = MAX_COMBO_TIMER;
-        [SerializeField]
-        private int maxCombo = 0;
+        private float comboTimer = 0f;
 
         #endregion
 
         #region Events
 
         [Header("Combo Events")]
-        [Header("Kill Scored")]
+        [Header("Combo Count Changed")]
         public event Action<int> OnComboCountChanged;
+
+        [Header("Multiplier Changed")]
         public event Action<float> OnMultiplierChanged;
+
         [Header("Milestone Reached")]
         public event Action OnMilestone10x;
         public event Action OnMilestone25x;
         public event Action OnMilestone50x;
+
+        #endregion
+
+        #region Dependency References
+
+        [Header("Dependencies")]
+        private IMovementProvider movementSystem;
+
+        #endregion
+
+        #region Unity Lifecycle
+
+        protected virtual void Awake()
+        {
+            currentCombo = 0;
+            comboMultiplier = 1f;
+            comboTimer = 0f;
+        }
+
+        protected virtual void Start()
+        {
+            CacheDependencies();
+        }
+
+        protected virtual void OnEnable()
+        {
+            // Start timer when enabled
+            if (comboTimer <= 0f)
+            {
+                comboTimer = MAX_COMBO_TIMER;
+            }
+        }
 
         #endregion
 
@@ -53,54 +86,45 @@ namespace TimesBaddestCat.Core
         [Header("Combo Logic")]
         public void OnKillScored(Vector3 position)
         {
-            currentComboCount++;
+            currentCombo++;
             comboTimer = MAX_COMBO_TIMER;
+            comboMultiplier = 1f + (currentCombo * 0.05f);
 
-            // Calculate multiplier based on combo count
-            comboMultiplier = 1f + (currentComboCount * 0.5f);
+            // Clamp multiplier to max
+            if (comboMultiplier > MILESTONE_5_MULTIPLIER)
+            {
+                comboMultiplier = MILESTONE_5_MULTIPLIER;
+            }
+
             GameAssert.IsValidComboMultiplier(comboMultiplier);
 
             // Check milestones
-            if (currentComboCount == (int)MILESTONE_1X)
-            {
-                OnMilestone10x?.Invoke();
-                SpawnMilestoneEffect(position);
-            }
-            else if (currentComboCount == (int)MILESTONE_2_5X)
-            {
-                OnMilestone25x?.Invoke();
-                SpawnMilestoneEffect(position);
-            }
-            else if (currentComboCount == (int)MILESTONE_5_0X)
-            {
-                OnMilestone50x?.Invoke();
-                SpawnMilestoneEffect(position);
-            }
+            if (currentCombo == 10) OnMilestone10x?.Invoke();
+            else if (currentCombo == 25) OnMilestone25x?.Invoke();
+            else if (currentCombo == 50) OnMilestone50x?.Invoke();
 
-            // Update max combo
-            if (currentComboCount > maxCombo)
-            {
-                maxCombo = currentComboCount;
-            }
-
-            OnComboCountChanged?.Invoke(currentComboCount);
+            OnComboCountChanged?.Invoke(currentCombo);
             OnMultiplierChanged?.Invoke(comboMultiplier);
 
-            Debug.Log($"Kill scored! Combo: x{comboMultiplier:F1} (Count: {currentComboCount})");
+            Debug.Log($"Kill scored! Combo: x{comboMultiplier:F1} (Count: {currentCombo})");
         }
 
         public void OnMovementSustained()
         {
             // Extend combo timer when player keeps moving
-            if (comboTimer > 0f)
+            if (comboTimer > 0f && comboTimer < MAX_COMBO_TIMER)
             {
                 comboTimer += Time.deltaTime * COMBO_DECAY_RATE;
+            }
+            else
+            {
+                ResetCombo();
             }
         }
 
         public void ResetCombo()
         {
-            currentComboCount = 0;
+            currentCombo = 0;
             comboMultiplier = 1f;
             comboTimer = MAX_COMBO_TIMER;
 
@@ -115,7 +139,7 @@ namespace TimesBaddestCat.Core
 
         public int GetCurrentCombo()
         {
-            return currentComboCount;
+            return currentCombo;
         }
 
         public float GetComboMultiplier()
@@ -135,39 +159,17 @@ namespace TimesBaddestCat.Core
         [Header("Update Loop")]
         private void Update()
         {
+            // Decay combo timer
             if (IsComboActive())
             {
-                // Decay combo timer
-                comboTimer -= Time.deltaTime;
+                comboTimer -= Time.deltaTime * COMBO_DECAY_RATE;
 
                 if (comboTimer <= 0f)
-                {
-                    ResetCombo();
-                }
+                    {
+                        ResetCombo();
+                    }
             }
-
-            // Debug info
-            if (IsComboActive())
-            {
-                Debug.Log($"Combo: x{comboMultiplier:F1} (Timer: {comboTimer:F2})");
             }
-        }
-
-        #endregion
-
-        #region Visual Effects
-
-        [Header("Visual Effects")]
-        private void SpawnMilestoneEffect(Vector3 position)
-        {
-            // VFX system would handle this
-            // For now, spawn debug marker
-            GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            marker.transform.position = position;
-            marker.transform.localScale = Vector3.one * 0.2f;
-            Destroy(marker, 2f);
-
-            Debug.Log($"Milestone at {position}");
         }
 
         #endregion
@@ -178,9 +180,8 @@ namespace TimesBaddestCat.Core
         [Header("Debug Info")]
         private void OnGUI()
         {
-            GUILayout.Label($"Current Combo: {GetCurrentCombo()} (x{GetComboMultiplier():F1})");
-            GUILayout.Label($"Combo Timer: {GetComboTimer():F2}");
-            GUILayout.Label($"Max Combo: {maxCombo}");
+            GUILayout.Label($"Combo: {GetCurrentCombo()} (x{GetComboMultiplier():F1})");
+            GUILayout.Label($"Timer: {GetComboTimer():F1}");
         }
         #endif
     }
