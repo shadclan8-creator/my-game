@@ -1,13 +1,29 @@
 {
   "dependencies": {
     "com.unity.collab-proxy": "2.5.1",
-    "com.unity.sysroot": "2.0.7",
     "com.unity.testframework": "1.1.33",
-    "com.unity.visualscripting": "1.0.0",
     "com.unity.textmeshfont": "3.0.0-preview",
-    "com.unity.timeline": "1.7.5",
-    "com.unity.xr.legacyinputhelpers": "2.1.2",
-    "com.unity.xr.openxr": "1.7.4"
+    "com.unity.timeline": "1.8.12",
+    "com.unity.visualscripting": "1.9.11",
+    "com.unity.xr.legacyinputhelpers": "2.1.13",
+    "com.unity.xr.openxr": "1.16.1",
+    "com.unity.modules.adaptiveperformance": "1.0.0"
+    "com.unity.modules.vectorgraphics": "1.0.0"
+    "com.unity.inputsystem": "1.4.6",
+    "com.unity.ugui": "1.2.4",
+    "com.unity.2d.sprite": "1.1.4",
+    "com.unity.2d.tilemap.extras": "1.2.2",
+    "com.unity.2d.terrain": "1.1.1",
+    "com.unity.nuget.for.version": "3.0.0",
+    "com.unity.2d.pixelperfect": "1.0.0",
+    "com.unity.2d.irender": "1.0.0",
+    "com.unity.unityanalytics": "3.0.0-preview",
+    "com.unity.modules.ui": "1.0.0",
+    "com.unity.multiplayer.center": "1.0.0",
+    "com.unity.xr.openxr": "1.16.1"
+    "com.unity.xr.management": "1.0.0",
+    "com.unity.xr.sdk.simulator": "1.0.0",
+    "com.unity.xr.openxr": "1.16.1"
   },
   "scopedRegistries": [],
   "regressedPackage": false,
