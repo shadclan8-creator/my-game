@@ -1,18 +1,19 @@
 using UnityEngine;
 using TimesBaddestCat.Foundation;
-using TimesBaddestCat.Core;
-using TimesBaddestCat.Presentation;
 
 namespace TimesBaddestCat.Gameplay
 {
     /// <summary>
-    /// Player Controller - Connects all foundation systems for Time's Baddest Cat.
-    /// Orchestrates Input, Movement, Combat, Camera, Combo, and Enemy AI.
+    /// Player Controller - Orchestrates all foundation systems for Time's Baddest Cat.
+    ///
+    /// Connects Input, Movement, Combat, Camera, Combo, and Enemy AI systems
+    /// Provides health management and player state to all systems.
     /// </summary>
     public class PlayerController : MonoBehaviour
     {
         #region Dependencies
 
+        [Header("Dependencies")]
         private IInputProvider inputSystem;
         private IMovementProvider movementSystem;
         private IPhysicsProvider physicsSystem;
@@ -29,7 +30,6 @@ namespace TimesBaddestCat.Gameplay
         [SerializeField]
         private float maxHealth = 100f;
         private float invulnerabilityTime = 0.5f;
-        [SerializeField]
         private float invulnerabilityDuration = 2f;
 
         [Header("Movement Settings")]
@@ -37,7 +37,6 @@ namespace TimesBaddestCat.Gameplay
         private float walkSpeed = 10f;
         [SerializeField]
         private float runSpeed = 20f;
-
         [SerializeField]
         private float jumpForce = 15f;
 
@@ -46,6 +45,7 @@ namespace TimesBaddestCat.Gameplay
         #region Player State
 
         [Header("Player State")]
+        [SerializeField]
         private float currentHealth;
         [SerializeField]
         private bool isInvulnerable;
@@ -72,6 +72,7 @@ namespace TimesBaddestCat.Gameplay
 
         protected virtual void Start()
         {
+            CacheDependencies();
             // Find player spawn point
             // For MVP testing, spawn at origin
             transform.position = Vector3.zero;
@@ -142,12 +143,6 @@ namespace TimesBaddestCat.Gameplay
             {
                 Die();
             }
-
-            // Spawn damage number
-            if (combatSystem != null)
-            {
-                combatSystem.SpawnDamageNumber(hitPosition, (int)finalDamage);
-            }
         }
 
         public void Die()
@@ -155,28 +150,12 @@ namespace TimesBaddestCat.Gameplay
             isDead = true;
             OnPlayerDeath?.Invoke();
 
-            // Reset combo on death
             if (comboSystem != null)
             {
                 comboSystem.ResetCombo();
             }
 
-            // Debug log
             Debug.Log("Player died!");
-        }
-
-        public void Respawn()
-        {
-            isDead = false;
-            SetInitialHealth();
-            SetInvulnerability(false);
-            transform.position = Vector3.zero;
-        }
-
-        private void UpdateInvulnerability()
-        {
-            // Check damage taken recently
-            // In full implementation, this would track last hit time
         }
 
         #endregion
@@ -214,12 +193,14 @@ namespace TimesBaddestCat.Gameplay
         private void HandleNormalMovement(Vector2 moveAxis)
         {
             bool dashRequested = inputSystem.IsDashRequested();
-            Vector3 forward = transform.forward;
 
             // Apply walk/run speed
             float speed = dashRequested ? runSpeed : walkSpeed;
 
+            Vector3 forward = transform.forward;
+
             Vector3 movement = (forward * moveAxis.y) + (transform.right * moveAxis.x);
+
             transform.position += movement * speed * Time.deltaTime;
 
             // Update speed for combo system
@@ -235,8 +216,9 @@ namespace TimesBaddestCat.Gameplay
             // Get aim direction
             Vector3 aimDirection = inputSystem.GetAimDirection();
 
-            // Move toward aim position (for strafing)
+            // Move toward aim position
             Vector3 movement = (transform.right * aimDirection.x) + (transform.forward * aimDirection.y);
+
             transform.position += movement * walkSpeed * Time.deltaTime;
 
             // Aim controls through camera
@@ -300,7 +282,6 @@ namespace TimesBaddestCat.Gameplay
             GUILayout.Label($"Health: {currentHealth:F1}/{maxHealth:F1}");
             GUILayout.Label($"Invulnerable: {(isInvulnerable ? "YES" : "NO")}");
             GUILayout.Label($"Movement Mode: {inputSystem.GetMovementMode()}");
-            GUILayout.Label($"Combo: x{comboSystem.GetCurrentCombo()}");
         }
         #endif
     }
