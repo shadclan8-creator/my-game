@@ -199,7 +199,7 @@ namespace TimesBaddestCat.Foundation
         private void OnDrawGizmos()
         {
             // Draw traversable surface detection
-            Gizmos.color = Color.cyan * 0.5f;
+            Gizmos.color = new Color(0f, 1f, 1f, 0.5f);
 
             if (Camera.main != null)
             {

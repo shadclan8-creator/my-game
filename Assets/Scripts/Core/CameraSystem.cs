@@ -298,14 +298,14 @@ namespace TimesBaddestCat.Core
         private void OnDrawGizmos()
         {
             // Draw camera position offset
-            Gizmos.color = Color.magenta * 0.5f;
+            Gizmos.color = new Color(1f, 0f, 1f, 0.5f);
             if (positionOffset != Vector3.zero)
             {
                 Gizmos.DrawWireSphere(transform.position, 0.5f);
             }
 
             // Draw aim direction
-            Gizmos.color = Color.cyan * 0.5f;
+            Gizmos.color = new Color(0f, 1f, 1f, 0.5f);
             Gizmos.DrawLine(transform.position, transform.position + transform.forward * 5f);
         }
         #endif
