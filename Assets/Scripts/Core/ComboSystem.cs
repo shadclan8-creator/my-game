@@ -1,5 +1,7 @@
+using System;
 using UnityEngine;
 using TimesBaddestCat.Tests.Helpers;
+using TimesBaddestCat.Foundation;
 
 namespace TimesBaddestCat.Core
 {
@@ -8,7 +10,7 @@ namespace TimesBaddestCat.Core
     ///
     /// Implements ADR-0007: Combo System Architecture
     /// </summary>
-    public class ComboSystem : MonoBehaviour
+    public class ComboSystem : MonoBehaviour, IComboProvider
     {
         #region Constants
 
@@ -151,6 +153,19 @@ namespace TimesBaddestCat.Core
         {
             return comboTimer;
         }
+
+        #endregion
+
+        #region Public API (IComboProvider)
+
+        // IComboProvider implementation
+        void IComboProvider.OnKillScored(Vector3 position) => OnKillScored(position);
+        void IComboProvider.OnMovementSustained() => OnMovementSustained();
+        void IComboProvider.ResetCombo() => ResetCombo();
+        int IComboProvider.GetCurrentCombo() => GetCurrentCombo();
+        float IComboProvider.GetComboMultiplier() => GetComboMultiplier();
+        float IComboProvider.GetComboTimer() => GetComboTimer();
+        bool IComboProvider.IsComboActive() => IsComboActive();
 
         #endregion
 

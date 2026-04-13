@@ -1,6 +1,8 @@
+using System;
+using System.Collections;
 using UnityEngine;
 using TimesBaddestCat.Tests.Helpers;
-using TimesBaddestCat.Input;
+using TimesBaddestCat.Foundation;
 
 namespace TimesBaddestCat.Core
 {
@@ -9,7 +11,23 @@ namespace TimesBaddestCat.Core
     ///
     /// Implements ADR-0003: Parkour Movement Implementation
     /// </summary>
-    public class MovementSystem : MonoBehaviour
+    public class MovementSystem : MonoBehaviour, IMovementProvider
+    {
+        #region Constants
+
+        [Header("Movement Constants")]
+        private const float WALL_RUN_ATTACH_SPEED = 2f;
+        private const float WALL_RUN_DETACH_SPEED = 1f;
+        private const float WALL_RUN_ATTACH_DISTANCE = 0.1f;
+        private const float WALL_RUN_MIN_DISTANCE = 0.5f;
+        private const float DASH_FORCE = 800f;
+        private const float DASH_DURATION = 0.15f;
+        private const float CLIMB_SPEED = 3f;
+        private const float CLIMB_SURFACE_DETACH_DISTANCE = 0.05f;
+        private const float SLIDE_FRICTION_MULTIPLIER = 0.7f;
+        private const float GRAVITY_MODIFIED = -30f;
+        private const float MAX_PARKOUR_SPEED = 50f;
+        private const float MAX_RAYCAST_DISTANCE = 10f;
     {
         #region Constants
 
@@ -46,9 +64,13 @@ namespace TimesBaddestCat.Core
         [SerializeField]
         private bool isSliding = false;
         [SerializeField]
+        private bool isDashOnCooldown = false;
+        [SerializeField]
         private Transform currentWallSurface;
         [SerializeField]
         private float currentSpeed = 0f;
+        [SerializeField]
+        private Vector2 moveInput = Vector2.zero;
 
         #endregion
 
@@ -226,10 +248,14 @@ namespace TimesBaddestCat.Core
             for (float t = 0f; t < WALL_RUN_ATTACH_SPEED * 0.5f; t += Time.deltaTime)
             {
                 transform.position = Vector3.Lerp(transform.position, wallPoint, t / (WALL_RUN_ATTACH_SPEED * 0.5f));
+                yield return null;
             }
 
             isWallRunning = true;
-            currentWallSurface = physicsSystem.GetWallRunAttachmentPoint(wallPoint, -transform.forward);
+            if (physicsSystem != null)
+            {
+                currentWallSurface = physicsSystem.GetWallRunAttachmentPoint(wallPoint, -transform.forward);
+            }
         }
 
         private void HandleWallRunning()
@@ -248,10 +274,13 @@ namespace TimesBaddestCat.Core
 
         private IEnumerator DetachFromWallRoutine()
         {
+            Vector3 toWall = currentWallSurface - transform.position;
+
             // Smooth transition off wall
             for (float t = 0f; t < WALL_RUN_DETACH_SPEED * 0.5f; t += Time.deltaTime)
             {
                 transform.position = Vector3.Lerp(transform.position, currentWallSurface + toWall, t / (WALL_RUN_DETACH_SPEED * 0.5f));
+                yield return null;
             }
 
             isWallRunning = false;
@@ -397,6 +426,22 @@ namespace TimesBaddestCat.Core
         public bool IsClimbing() => isClimbing;
         public bool IsDashing() => isDashing;
         public bool IsSliding() => isSliding;
+
+        // IMovementProvider additional methods
+        void IMovementProvider.SetMovementMode(MovementMode mode)
+        {
+            // Could switch between movement modes here
+        }
+
+        Vector3 IMovementProvider.GetAimDirection()
+        {
+            if (inputSystem != null)
+            {
+                Vector2 aim = inputSystem.GetAimDirection();
+                return new Vector3(aim.x, 0f, aim.y).normalized;
+            }
+            return Vector3.forward;
+        }
 
         #endregion
 

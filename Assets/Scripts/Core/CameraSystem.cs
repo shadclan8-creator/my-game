@@ -1,6 +1,8 @@
+using System;
+using System.Collections;
 using UnityEngine;
 using TimesBaddestCat.Tests.Helpers;
-using Cinemachine;
+using TimesBaddestCat.Foundation;
 
 namespace TimesBaddestCat.Core
 {
@@ -8,9 +10,9 @@ namespace TimesBaddestCat.Core
     /// Camera System - Core layer system for following fast parkour movement.
     ///
     /// Implements ADR-0008: Camera System Implementation
-    /// Uses Cinemachine 3.x with custom ImpulseListener for camera shake and FOV dynamics.
+    /// Uses Unity's camera system with FOV dynamics and smooth following.
     /// </summary>
-    public class CameraSystem : MonoBehaviour
+    public class CameraSystem : MonoBehaviour, ICameraProvider
     {
         #region Constants
 
@@ -20,6 +22,8 @@ namespace TimesBaddestCat.Core
         private const float FOV_LERP_SPEED = 5f;
         private const float SHAKE_INTENSITY = 0.5f;
         private const float SHAKE_DURATION = 0.15f;
+        private const float FOLLOW_SMOOTH_SPEED = 10f;
+        private const float LOOK_SMOOTH_SPEED = 5f;
 
         #endregion
 
@@ -27,17 +31,33 @@ namespace TimesBaddestCat.Core
 
         [Header("Camera Configuration")]
         [SerializeField]
-        private CinemachineVirtualCamera virtualCamera;
-        [SerializeField]
-        private CinemachineImpulseListener cameraImpulse;
+        private Camera mainCamera;
         [SerializeField]
         private Transform playerTarget;
         [SerializeField]
-        private Vector3 positionOffset;
+        private Vector3 positionOffset = new Vector3(0f, 2f, -5f);
+        [SerializeField]
+        private Vector2 lookSensitivity = new Vector2(2f, 2f);
+        [SerializeField]
+        private float maxLookUp = 80f;
+        [SerializeField]
+        private float maxLookDown = 80f;
+
+        [Header("Camera State")]
         [SerializeField]
         private float currentFOV = DEFAULT_FOV;
         [SerializeField]
+        private float targetFOV = DEFAULT_FOV;
+        [SerializeField]
         private bool isADSMode = false;
+        [SerializeField]
+        private Vector2 currentRotation = Vector2.zero;
+        [SerializeField]
+        private float shakeIntensity = 0f;
+        [SerializeField]
+        private float shakeTimer = 0f;
+        [SerializeField]
+        private Vector3 shakeOffset = Vector3.zero;
 
         #endregion
 
@@ -45,6 +65,7 @@ namespace TimesBaddestCat.Core
 
         [Header("Dependencies")]
         private IMovementProvider movementSystem;
+        private IInputProvider inputSystem;
 
         #endregion
 
@@ -52,83 +73,81 @@ namespace TimesBaddestCat.Core
 
         protected virtual void Awake()
         {
-            // Find or create Cinemachine components
-            if (virtualCamera == null)
-            {
-                CreateCinemachine();
-            }
-            else
-            {
-                virtualCamera = FindObjectOfType<CinemachineVirtualCamera>();
-                cameraImpulse = FindObjectOfType<CinemachineImpulseListener>();
-            }
+            InitializeCamera();
         }
 
         protected virtual void Start()
         {
             CacheDependencies();
-
-            // Set initial follow target
-            if (playerTarget == null)
-            {
-                Debug.LogWarning("Player target not set! Camera will follow first player GameObject found.");
-            }
-
-            // Cinemachine setup
-            virtualCamera.Follow = playerTarget;
-            virtualCamera.LookAt = playerTarget;
-
-            // Apply initial settings
             ApplyFOV(DEFAULT_FOV);
         }
 
         protected virtual void OnEnable()
         {
-            EnableCinemachine();
+            EnableCamera();
         }
 
         protected virtual void OnDisable()
         {
-            DisableCinemachine();
+            DisableCamera();
+        }
+
+        protected virtual void LateUpdate()
+        {
+            UpdateCameraFollow();
+            UpdateCameraLook();
+            UpdateCameraShake();
+            UpdateFOV();
         }
 
         #endregion
 
-        #region Cinemachine Management
+        #region Initialization
 
-        [Header("Cinemachine Management")]
-        private void CreateCinemachine()
+        [Header("Camera Initialization")]
+        private void InitializeCamera()
         {
-            // Create Cinemachine Virtual Camera
-            GameObject cameraObject = new GameObject("Main Virtual Camera");
-            cameraObject.tag = "MainCamera";
-
-            if (virtualCamera == null)
+            // Find or create main camera
+            if (mainCamera == null)
             {
-                virtualCamera = cameraObject.AddComponent<CinemachineVirtualCamera>();
+                mainCamera = Camera.main;
+                if (mainCamera == null)
+                {
+                    GameObject cameraObj = new GameObject("Main Camera");
+                    cameraObj.tag = "MainCamera";
+                    mainCamera = cameraObj.AddComponent<Camera>();
+                    AudioListener listener = cameraObj.AddComponent<AudioListener>();
+                }
             }
 
-            // Create Cinemachine Impulse Listener
-            if (cameraImpulse == null)
-            {
-                GameObject impulseListener = new GameObject("Camera Impulse Listener");
-                cameraImpulse = impulseListener.AddComponent<CinemachineImpulseListener>();
+            // Set initial position
+            transform.position = positionOffset;
+        }
 
-                cameraImpulse.AddReactionListener<CameraShake>();
-                cameraImpulse.AddReactionListener<CameraFOV>();
+        private void CacheDependencies()
+        {
+            movementSystem = FindObjectOfType<IMovementProvider>();
+            inputSystem = FindObjectOfType<IInputProvider>();
+
+            if (movementSystem == null || inputSystem == null)
+            {
+                Debug.LogWarning("Camera System missing some dependencies!");
             }
         }
 
-        private void EnableCinemachine()
+        #endregion
+
+        #region Camera Management
+
+        [Header("Camera Management")]
+        private void EnableCamera()
         {
-            if (virtualCamera != null) virtualCamera.enabled = true;
-            if (cameraImpulse != null) cameraImpulse.enabled = true;
+            if (mainCamera != null) mainCamera.enabled = true;
         }
 
-        private void DisableCinemachine()
+        private void DisableCamera()
         {
-            if (virtualCamera != null) virtualCamera.enabled = false;
-            if (cameraImpulse != null) cameraImpulse.enabled = false;
+            if (mainCamera != null) mainCamera.enabled = false;
         }
 
         #endregion
@@ -139,41 +158,29 @@ namespace TimesBaddestCat.Core
         public void SetPlayerTarget(Transform target)
         {
             playerTarget = target;
-            if (virtualCamera != null)
-            {
-                virtualCamera.Follow = target;
-            }
+        }
+
+        public void SetAimDirection(Vector2 direction)
+        {
+            // This would be used for aim assist or other systems
         }
 
         public void AddCameraShake(float intensity)
         {
-            if (cameraImpulse == null) return;
-
-            // Apply shake with intensity from ADR-0008
-            cameraImpulse.GenerateImpulse(SHAKE_INTENSITY * intensity, SHAKE_DURATION);
-        }
-
-        public void ApplyWeaponRecoil(float recoilAmount)
-        {
-            if (cameraImpulse == null) return;
-
-            // Camera FOV kick on weapon fire
-            float targetFOV = isADSMode ? ADS_FOV : DEFAULT_FOV;
-            cameraImpulse.GenerateImpulse(Vector3.down, -recoilAmount, 0.05f);
+            shakeIntensity = SHAKE_INTENSITY * intensity;
+            shakeTimer = SHAKE_DURATION;
         }
 
         public void EnableAimMode(bool enable)
         {
             isADSMode = enable;
-
-            // Smooth FOV transition
-            StartCoroutine(SmoothFOVTransition());
+            targetFOV = isADSMode ? ADS_FOV : DEFAULT_FOV;
         }
 
         public void DisableAimMode()
         {
             isADSMode = false;
-            StartCoroutine(SmoothFOVTransition());
+            targetFOV = DEFAULT_FOV;
         }
 
         public void SetPositionOffset(Vector3 offset)
@@ -183,63 +190,104 @@ namespace TimesBaddestCat.Core
 
         #endregion
 
-        #region FOV Management
+        #region Camera Updates
 
-        [Header("FOV Management")]
-        private void ApplyFOV(float targetFOV)
+        [Header("Camera Updates")]
+        private void UpdateCameraFollow()
         {
-            currentFOV = targetFOV;
+            if (playerTarget == null) return;
+
+            // Calculate target position
+            Vector3 targetPosition = playerTarget.position + positionOffset + shakeOffset;
+
+            // Smooth follow
+            transform.position = Vector3.Lerp(transform.position, targetPosition, FOLLOW_SMOOTH_SPEED * Time.deltaTime);
         }
 
-        private IEnumerator SmoothFOVTransition()
+        private void UpdateCameraLook()
         {
-            float duration = 0.2f;
-            float startFOV = currentFOV;
-            float elapsedTime = 0f;
+            if (inputSystem == null) return;
 
-            while (elapsedTime < duration)
+            // Get aim input
+            Vector2 aimInput = inputSystem.GetAimDirection();
+
+            // Apply rotation
+            currentRotation.x += aimInput.x * lookSensitivity.x * Time.deltaTime;
+            currentRotation.y -= aimInput.y * lookSensitivity.y * Time.deltaTime;
+
+            // Clamp vertical rotation
+            currentRotation.y = Mathf.Clamp(currentRotation.y, -maxLookDown, maxLookUp);
+
+            // Apply rotation to camera
+            transform.rotation = Quaternion.Euler(currentRotation.y, currentRotation.x, 0f);
+        }
+
+        private void UpdateCameraShake()
+        {
+            if (shakeTimer > 0f)
             {
-                elapsedTime += Time.deltaTime;
-                float t = elapsedTime / duration;
-                float currentFOV = Mathf.Lerp(startFOV, targetFOV, t);
-                virtualCamera.m_Lens.FieldOfView = currentFOV;
-                yield return null;
-            }
+                shakeTimer -= Time.deltaTime;
 
-            currentFOV = targetFOV;
+                // Generate random shake offset
+                shakeOffset = new Vector3(
+                    UnityEngine.Random.Range(-shakeIntensity, shakeIntensity),
+                    UnityEngine.Random.Range(-shakeIntensity, shakeIntensity),
+                    UnityEngine.Random.Range(-shakeIntensity, shakeIntensity)
+                ) * (shakeTimer / SHAKE_DURATION);
+
+                if (shakeTimer <= 0f)
+                {
+                    shakeOffset = Vector3.zero;
+                }
+            }
         }
 
         #endregion
 
-        #region Movement-Based FOV
+        #region FOV Management
 
-        [Header("Speed-Based FOV")]
-        private void Update()
+        [Header("FOV Management")]
+        private void ApplyFOV(float fov)
         {
-            // Check for player movement system
-            if (movementSystem != null)
+            currentFOV = fov;
+            if (mainCamera != null)
+            {
+                mainCamera.fieldOfView = fov;
+            }
+        }
+
+        private void UpdateFOV()
+        {
+            // Lerp current FOV to target
+            currentFOV = Mathf.Lerp(currentFOV, targetFOV, FOV_LERP_SPEED * Time.deltaTime);
+
+            // Apply to camera
+            if (mainCamera != null)
+            {
+                mainCamera.fieldOfView = currentFOV;
+            }
+
+            // Speed-based FOV adjustment
+            if (movementSystem != null && !isADSMode)
             {
                 float speed = movementSystem.GetCurrentSpeed();
-
-                // Expand FOV based on player speed
                 if (speed > 0f)
                 {
-                    float speedMultiplier = Mathf.Clamp01(speed / 30f, 0.5f, 1.5f);
-                    float targetFOV = DEFAULT_FOV + speedMultiplier * 10f;
-                    ApplyFOV(targetFOV);
-                }
-                else
-                {
-                    ApplyFOV(DEFAULT_FOV);
-                }
-
-                // Update target if player exists
-                if (playerTarget != null)
-                {
-                    virtualCamera.Follow = playerTarget;
+                    float speedMultiplier = Mathf.Clamp01(speed / 30f);
+                    float speedFOV = DEFAULT_FOV + speedMultiplier * 10f;
+                    targetFOV = Mathf.Max(targetFOV, speedFOV);
                 }
             }
         }
+
+        #endregion
+
+        #region Public API
+
+        public Camera GetCamera() => mainCamera;
+        public float GetCurrentFOV() => currentFOV;
+        public Vector3 GetForwardDirection() => transform.forward;
+        public Vector3 GetRightDirection() => transform.right;
 
         #endregion
 
@@ -253,15 +301,12 @@ namespace TimesBaddestCat.Core
             Gizmos.color = Color.magenta * 0.5f;
             if (positionOffset != Vector3.zero)
             {
-                Gizmos.DrawWireSphere(transform.position + positionOffset, 0.5f);
+                Gizmos.DrawWireSphere(transform.position, 0.5f);
             }
 
             // Draw aim direction
-            if (playerTarget != null && movementSystem != null)
-            {
-                Vector3 aim = movementSystem.GetAimDirection();
-                Gizmos.DrawLine(transform.position, transform.position + aim, Color.cyan * 0.5f, 0.5f);
-            }
+            Gizmos.color = Color.cyan * 0.5f;
+            Gizmos.DrawLine(transform.position, transform.position + transform.forward * 5f);
         }
         #endif
     }

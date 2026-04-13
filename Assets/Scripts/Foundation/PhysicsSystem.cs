@@ -1,5 +1,6 @@
 using UnityEngine;
 using TimesBaddestCat.Tests.Helpers;
+using TimesBaddestCat.Foundation;
 
 namespace TimesBaddestCat.Foundation
 {
@@ -9,7 +10,7 @@ namespace TimesBaddestCat.Foundation
     ///
     /// Implements ADR-0002: Physics Collision Strategy
     /// </summary>
-    public class PhysicsSystem : MonoBehaviour
+    public class PhysicsSystem : MonoBehaviour, IPhysicsProvider
     {
         #region Constants
 
@@ -18,22 +19,8 @@ namespace TimesBaddestCat.Foundation
         private const float WALL_RUN_DETACH_SPEED = 1f;
         private const float GROUND_DETECTION_RADIUS = 1f;
         private const float MAX_PROJECTILE_POOL_SIZE = 50;
-
-        #endregion
-
-        #region LayerMasks
-
-        [Header("Layer Masks")]
-        private static class Layers
-        {
-            public static readonly int Traversable = 1 << 0;
-            public static readonly int Ground = 1 << 1;
-            public static readonly int Enemy = 1 << 2;
-            public static readonly int Target = 1 << 3;
-            public static readonly int Projectile = 1 << 4;
-            public static readonly int Environment = 1 << 5;
-            public static readonly int Cover = 1 << 6;
-        }
+        private const int TRAVERSABLE_LAYER = 6;  // Layer index for traversable surfaces
+        private const int GROUND_LAYER = 8;       // Layer index for ground
 
         #endregion
 
@@ -41,13 +28,13 @@ namespace TimesBaddestCat.Foundation
 
         [Header("Physics Configuration")]
         [SerializeField]
-        private LayerMask traversableLayer = Layers.Traversable;
+        private LayerMask traversableLayer = 1 << TRAVERSABLE_LAYER;
         [SerializeField]
-        private LayerMask groundLayer = Layers.Ground;
+        private LayerMask groundLayer = 1 << GROUND_LAYER;
         [SerializeField]
-        private LayerMask enemyLayer = Layers.Enemy | Layers.Target;
+        private LayerMask enemyLayer = 1 << 10;
         [SerializeField]
-        private LayerMask projectileCollisionLayers = Layers.Enemy | Layers.Target | Layers.Environment;
+        private LayerMask projectileCollisionLayers = -1; // All layers
 
         #endregion
 
@@ -62,9 +49,21 @@ namespace TimesBaddestCat.Foundation
             projectilePool = new GameObject[MAX_PROJECTILE_POOL_SIZE];
             for (int i = 0; i < size; i++)
             {
-                projectilePool[i] = new GameObject("Projectile", typeof(CapsuleCollider));
-                projectilePool[i].layer = Layers.Projectile;
-                projectilePool[i].SetActive(false);
+                GameObject proj = new GameObject($"Projectile_{i}", typeof(CapsuleCollider), typeof(Rigidbody));
+                proj.layer = LayerMask.NameToLayer("Projectile");
+                proj.SetActive(false);
+                projectilePool[i] = proj;
+
+                // Setup collider
+                CapsuleCollider col = proj.GetComponent<CapsuleCollider>();
+                col.radius = 0.1f;
+                col.height = 0.3f;
+                col.isTrigger = true;
+
+                // Setup rigidbody
+                Rigidbody rb = proj.GetComponent<Rigidbody>();
+                rb.useGravity = false;
+                rb.isKinematic = true;
             }
             poolIndex = 0;
         }
@@ -79,7 +78,6 @@ namespace TimesBaddestCat.Foundation
                     return projectilePool[i];
                 }
             }
-            }
             Debug.LogWarning("Projectile pool exhausted!");
             return null;
         }
@@ -89,7 +87,53 @@ namespace TimesBaddestCat.Foundation
             if (projectile != null)
             {
                 projectile.SetActive(false);
+                Rigidbody rb = projectile.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.velocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
             }
+        }
+
+        #endregion
+
+        #region IPhysicsProvider Implementation
+
+        public bool IsGrounded(Vector3 position)
+        {
+            return IsGrounded(position, GROUND_DETECTION_RADIUS);
+        }
+
+        public bool CanWallRun(Vector3 position, Vector3 direction)
+        {
+            return CanWallRun(position, direction, MAX_RAYCAST_DISTANCE);
+        }
+
+        public bool CanClimb(Vector3 position)
+        {
+            return CanClimb(position, GROUND_DETECTION_RADIUS);
+        }
+
+        public Vector3 GetWallRunAttachmentPoint(Vector3 position, Vector3 direction, float maxDistance = 10f)
+        {
+            RaycastHit hit;
+            if (Physics.Raycast(position, direction, out hit, maxDistance, traversableLayer))
+            {
+                // Return point slightly offset from wall
+                return hit.point - direction * 0.1f;
+            }
+            return position + direction * 2f;
+        }
+
+        public Vector3 GetWallNormal(Vector3 position)
+        {
+            RaycastHit hit;
+            if (Physics.Raycast(position, Vector3.forward, out hit, 1f, traversableLayer))
+            {
+                return hit.normal;
+            }
+            return Vector3.back;
         }
 
         #endregion
@@ -99,31 +143,24 @@ namespace TimesBaddestCat.Foundation
         [Header("Surface Detection")]
         public bool CanWallRun(Vector3 direction, float maxDistance = MAX_RAYCAST_DISTANCE)
         {
-            return Physics.Raycast(origin: direction, direction: direction, maxDistance: maxDistance,
-                layerMask: traversableLayer);
+            return Physics.Raycast(Vector3.zero, direction, maxDistance, traversableLayer);
         }
 
-        public bool CanWallRun(Vector3 origin, Vector3 direction)
+        public bool CanClimb(Vector3 position, float upwardCheckDistance = 2f)
         {
-            return CanWallRun(origin, direction, MAX_RAYCAST_DISTANCE);
-        }
-
-        public bool CanClimb(Vector3 position, float downwardCheckDistance = GROUND_DETECTION_RADIUS)
-        {
-            Vector3 raycastOrigin = position + Vector3.up * downwardCheckDistance;
-            return Physics.Raycast(raycastOrigin, Vector3.down, downwardCheckDistance,
-                layerMask: traversableLayer);
+            Vector3 raycastOrigin = position + Vector3.up * 0.5f;
+            RaycastHit hit;
+            return Physics.Raycast(raycastOrigin, Vector3.up, out hit, upwardCheckDistance, traversableLayer);
         }
 
         public bool IsGrounded(Vector3 position, float checkDistance = GROUND_DETECTION_RADIUS)
         {
-            return Physics.SphereCast(position, checkDistance, Vector3.down, checkDistance,
-                    layerMask: groundLayer);
+            return Physics.SphereCast(position, checkDistance * 0.5f, Vector3.down, out _, checkDistance, groundLayer);
         }
 
         public Collider GetNearbyCover(Vector3 position, float radius = 2f)
         {
-            Collider[] colliders = Physics.OverlapSphere(position, radius, layerMask: Layers.Cover);
+            Collider[] colliders = Physics.OverlapSphere(position, radius, 1 << 7);
             return colliders.Length > 0 ? colliders[0] : null;
         }
 
@@ -166,10 +203,8 @@ namespace TimesBaddestCat.Foundation
 
             if (Camera.main != null)
             {
-                Gizmos.DrawRay(Camera.main.transform.position, Camera.main.transform.forward,
-                    MAX_RAYCAST_DISTANCE, Color.cyan * 0.5f);
+                Gizmos.DrawRay(Camera.main.transform.position, Camera.main.transform.forward * MAX_RAYCAST_DISTANCE);
             }
-        }
         }
         #endif
     }

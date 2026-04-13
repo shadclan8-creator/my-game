@@ -1,5 +1,8 @@
+using System;
+using System.Collections;
 using UnityEngine;
 using TimesBaddestCat.Tests.Helpers;
+using TimesBaddestCat.Foundation;
 
 namespace TimesBaddestCat.Core
 {
@@ -8,7 +11,7 @@ namespace TimesBaddestCat.Core
     ///
     /// Implements ADR-0004: Combat System Architecture
     /// </summary>
-    public class CombatSystem : MonoBehaviour
+    public class CombatSystem : MonoBehaviour, ICombatProvider
     {
         #region Constants
 
@@ -35,6 +38,14 @@ namespace TimesBaddestCat.Core
         private int currentAmmo;
         [SerializeField]
         private int maxAmmo = 30;
+
+        #endregion
+
+        #region State
+
+        [Header("Combat State")]
+        [SerializeField]
+        private bool isReloading = false;
 
         #endregion
 
@@ -106,7 +117,7 @@ namespace TimesBaddestCat.Core
             }
         }
 
-        public void ReloadWeapon()
+        private void ReloadWeaponInternal()
         {
             // Check if can reload
             if (currentAmmo == maxAmmo) return;
@@ -147,7 +158,7 @@ namespace TimesBaddestCat.Core
         #region Combat Actions
 
         [Header("Combat Actions")]
-        public void FireWeapon()
+        private void FireWeaponInternal()
         {
             // Check if can fire
             if (currentAmmo <= 0 || isReloading) return;
@@ -208,16 +219,24 @@ namespace TimesBaddestCat.Core
             SpawnImpactEffect(hitPosition, enemy.GetBodyPart());
         }
 
-        public void TakeDamage(float damage, Vector3 hitPosition, BodyPart bodyPart)
+        public void TakeDamage(IKillable enemy, float damage, Vector3 hitPosition, BodyPart bodyPart)
         {
             float multiplier = GetBodyPartMultiplier(bodyPart);
             float finalDamage = (BASE_DAMAGE * GetWeaponMultiplier()) * multiplier;
 
-            enemy?.TakeDamage(finalDamage);
+            enemy?.TakeDamage(finalDamage, hitPosition, bodyPart);
 
             // Visual feedback
             SpawnImpactEffect(hitPosition, bodyPart);
         }
+
+        // ICombatProvider implementation - redirect to internal methods
+        void ICombatProvider.FireWeapon() => FireWeaponInternal();
+        void ICombatProvider.ReloadWeapon() => ReloadWeaponInternal();
+        void ICombatProvider.EquipWeapon(WeaponType weaponType) => EquipWeapon(weaponType);
+        int ICombatProvider.GetCurrentAmmo() => currentAmmo;
+        int ICombatProvider.GetMaxAmmo() => maxAmmo;
+        bool ICombatProvider.IsReloading() => isReloading;
 
         public bool CanDamage(IKillable target)
         {

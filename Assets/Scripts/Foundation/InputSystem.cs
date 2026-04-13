@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,7 +9,7 @@ namespace TimesBaddestCat.Foundation
     ///
     /// Implements ADR-0001: Input System Architecture
     /// </summary>
-    public class InputSystem : MonoBehaviour
+    public class InputSystem : MonoBehaviour, IInputProvider
     {
         #region Constants
 
@@ -159,10 +160,16 @@ namespace TimesBaddestCat.Foundation
         #region State Management
 
         [Header("State Management")]
+        private MovementMode currentMovementMode = MovementMode.Normal;
+
         public void SetMovementMode(MovementMode mode)
         {
-            // Movement mode for different gameplay states
-            // Implementation depends on Movement System needs
+            currentMovementMode = mode;
+        }
+
+        public MovementMode GetMovementMode()
+        {
+            return currentMovementMode;
         }
 
         public void TogglePause()
