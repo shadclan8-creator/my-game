@@ -125,6 +125,16 @@ namespace TimesBaddestCat.Gameplay
             isInvulnerable = invulnerable;
         }
 
+        private void UpdateInvulnerability()
+        {
+            // Invulnerability timer logic would go here
+            // For now, just reset to vulnerable
+            if (isInvulnerable)
+            {
+                isInvulnerable = false;
+            }
+        }
+
         #endregion
 
         #region Health Management

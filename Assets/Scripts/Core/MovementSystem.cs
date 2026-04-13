@@ -323,6 +323,18 @@ namespace TimesBaddestCat.Core
             isClimbing = false;
         }
 
+        private void StopWallRunning()
+        {
+            isWallRunning = false;
+            ApplyNormalGravity();
+        }
+
+        private void StopDashing()
+        {
+            isDashing = false;
+            rb.drag = 0f;
+        }
+
         private void ApplyClimbPhysics()
         {
             rb.useGravity = false;
