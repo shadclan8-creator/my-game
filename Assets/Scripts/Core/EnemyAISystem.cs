@@ -52,18 +52,10 @@ namespace TimesBaddestCat.Core
 
         #endregion
 
-        #region Dependencies
-
-        [Header("Dependencies")]
-        private IMovementProvider movementSystem;
-
-        #endregion
-
         #region Unity Lifecycle
 
         protected virtual void Start()
         {
-            CacheDependencies();
             InitializeAgent();
         }
 
@@ -75,7 +67,21 @@ namespace TimesBaddestCat.Core
         private void InitializeAgent()
         {
             navMeshAgent = GetComponent<NavMeshAgent>();
-            playerTarget = FindObjectOfType<PlayerController>();
+            if (navMeshAgent == null)
+            {
+                navMeshAgent = gameObject.AddComponent<NavMeshAgent>();
+            }
+
+            FindPlayer();
+        }
+
+        private void FindPlayer()
+        {
+            GameObject player = GameObject.FindGameObjectWithTag("Player");
+            if (player != null)
+            {
+                playerTarget = player.transform;
+            }
         }
 
         #endregion
@@ -242,14 +248,14 @@ namespace TimesBaddestCat.Core
         private void OnDrawGizmos()
         {
             // Visualize detection range
-            Gizmos.color = Color.red * 0.5f;
+            Gizmos.color = new Color(1f, 0f, 0f, 0.5f);
             if (playerTarget != null)
             {
-                Gizmos.DrawWireSphere(playerTarget.position, DETECTION_RANGE, Gizmos.color);
+                Gizmos.DrawWireSphere(playerTarget.position, DETECTION_RANGE);
             }
 
             // Visualize patrol waypoints
-            Gizmos.color = Color.blue * 0.5f;
+            Gizmos.color = new Color(0f, 0f, 1f, 0.5f);
             Vector3[] waypoints = GeneratePatrolWaypoints();
             for (int i = 0; i < waypoints.Length; i++)
             {

@@ -464,14 +464,14 @@ namespace TimesBaddestCat.Core
         private void OnDrawGizmos()
         {
             // Visualize velocity
-            Gizmos.color = Color.yellow * 0.7f;
-            Gizmos.DrawLine(transform.position, transform.position + rb.velocity * 0.1f, Gizmos.color);
+            Gizmos.color = new Color(1f, 1f, 0f, 0.7f);
+            Gizmos.DrawLine(transform.position, transform.position + rb.velocity * 0.1f);
 
             // Visualize wall attachment point
             if (isWallRunning && currentWallSurface != null)
             {
                 Gizmos.color = Color.cyan;
-                Gizmos.DrawWireSphere(currentWallSurface, 0.1f, 8);
+                Gizmos.DrawWireSphere(currentWallSurface, 0.1f);
             }
         }
         #endif
