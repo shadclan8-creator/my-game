@@ -225,25 +225,6 @@ namespace TimesBaddestCat.Foundation
         #endif
     }
 
-    #region Enums
-
-    [Header("Device Type")]
-    public enum DeviceType
-    {
-        KeyboardMouse,
-        Gamepad
-    }
-
-    [Header("Movement Mode")]
-    public enum MovementMode
-    {
-        Normal,
-        Combat,
-        Cinematic
-    }
-
-    #endregion
-
     #region Events
 
     /// <summary>

@@ -28,21 +28,6 @@ namespace TimesBaddestCat.Core
         private const float GRAVITY_MODIFIED = -30f;
         private const float MAX_PARKOUR_SPEED = 50f;
         private const float MAX_RAYCAST_DISTANCE = 10f;
-    {
-        #region Constants
-
-        [Header("Movement Constants")]
-        private const float WALL_RUN_ATTACH_SPEED = 2f;
-        private const float WALL_RUN_DETACH_SPEED = 1f;
-        private const float WALL_RUN_ATTACH_DISTANCE = 0.1f;
-        private const float WALL_RUN_MIN_DISTANCE = 0.5f;
-        private const float DASH_FORCE = 800f;
-        private const float DASH_DURATION = 0.15f;
-        private const float CLIMB_SPEED = 3f;
-        private const float CLIMB_SURFACE_DETACH_DISTANCE = 0.05f;
-        private const float SLIDE_FRICTION_MULTIPLIER = 0.7f;
-        private const float GRAVITY_MODIFIED = -30f;
-        private const float MAX_PARKOUR_SPEED = 50f;
 
         #endregion
 
@@ -66,7 +51,7 @@ namespace TimesBaddestCat.Core
         [SerializeField]
         private bool isDashOnCooldown = false;
         [SerializeField]
-        private Transform currentWallSurface;
+        private Vector3 currentWallSurface;
         [SerializeField]
         private float currentSpeed = 0f;
         [SerializeField]
@@ -254,7 +239,7 @@ namespace TimesBaddestCat.Core
             isWallRunning = true;
             if (physicsSystem != null)
             {
-                currentWallSurface = physicsSystem.GetWallRunAttachmentPoint(wallPoint, -transform.forward);
+                currentWallSurface = physicsSystem.GetWallRunAttachmentPoint(transform.position, transform.forward, MAX_RAYCAST_DISTANCE);
             }
         }
 
@@ -408,12 +393,6 @@ namespace TimesBaddestCat.Core
             rb.drag = multiplier;
         }
 
-        private void ApplyClimbPhysics()
-        {
-            rb.useGravity = false;
-            rb.velocity = Vector3.zero;
-        }
-
         #endregion
 
         #region Public Interface
@@ -468,7 +447,7 @@ namespace TimesBaddestCat.Core
             Gizmos.DrawLine(transform.position, transform.position + rb.velocity * 0.1f);
 
             // Visualize wall attachment point
-            if (isWallRunning && currentWallSurface != null)
+            if (isWallRunning)
             {
                 Gizmos.color = Color.cyan;
                 Gizmos.DrawWireSphere(currentWallSurface, 0.1f);

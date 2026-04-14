@@ -33,7 +33,16 @@ namespace TimesBaddestCat.Foundation
         Body,
         Limbs
     }
-{
+
+    /// <summary>
+    /// Device types for input.
+    /// </summary>
+    public enum DeviceType
+    {
+        KeyboardMouse,
+        Gamepad
+    }
+
     /// <summary>
     /// Provides input functionality to other systems.
     /// </summary>

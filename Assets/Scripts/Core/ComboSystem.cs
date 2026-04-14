@@ -159,13 +159,40 @@ namespace TimesBaddestCat.Core
         #region Public API (IComboProvider)
 
         // IComboProvider implementation
-        void IComboProvider.OnKillScored(Vector3 position) => OnKillScored(position);
-        void IComboProvider.OnMovementSustained() => OnMovementSustained();
-        void IComboProvider.ResetCombo() => ResetCombo();
-        int IComboProvider.GetCurrentCombo() => GetCurrentCombo();
-        float IComboProvider.GetComboMultiplier() => GetComboMultiplier();
-        float IComboProvider.GetComboTimer() => GetComboTimer();
-        bool IComboProvider.IsComboActive() => IsComboActive();
+        void IComboProvider.OnKillScored(Vector3 position)
+        {
+            OnKillScored(position);
+        }
+
+        void IComboProvider.OnMovementSustained()
+        {
+            OnMovementSustained();
+        }
+
+        void IComboProvider.ResetCombo()
+        {
+            ResetCombo();
+        }
+
+        int IComboProvider.GetCurrentCombo()
+        {
+            return GetCurrentCombo();
+        }
+
+        float IComboProvider.GetComboMultiplier()
+        {
+            return GetComboMultiplier();
+        }
+
+        float IComboProvider.GetComboTimer()
+        {
+            return GetComboTimer();
+        }
+
+        bool IComboProvider.IsComboActive()
+        {
+            return IsComboActive();
+        }
 
         #endregion
 
@@ -180,10 +207,9 @@ namespace TimesBaddestCat.Core
                 comboTimer -= Time.deltaTime * COMBO_DECAY_RATE;
 
                 if (comboTimer <= 0f)
-                    {
-                        ResetCombo();
-                    }
-            }
+                {
+                    ResetCombo();
+                }
             }
         }
 

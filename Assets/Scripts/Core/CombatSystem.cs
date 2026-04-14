@@ -7,6 +7,29 @@ using TimesBaddestCat.Foundation;
 namespace TimesBaddestCat.Core
 {
     /// <summary>
+    /// IKillable interface for entities that can be killed/damaged.
+    /// </summary>
+    public interface IKillable
+    {
+        void TakeDamage(float damage, Vector3 hitPosition, BodyPart bodyPart);
+        BodyPart GetBodyPart();
+        bool enabled { get; }
+    }
+
+    /// <summary>
+    /// Weapon data class for weapon configuration.
+    /// </summary>
+    [System.Serializable]
+    public class WeaponData
+    {
+        public WeaponType type;
+        public string name;
+        public int fireRate; // rounds per second
+        public float damagePerSecond;
+        public float reloadTime;
+    }
+
+    /// <summary>
     /// Combat System - Core layer system for weapons, damage, and projectiles.
     ///
     /// Implements ADR-0004: Combat System Architecture
@@ -31,7 +54,7 @@ namespace TimesBaddestCat.Core
 
         [Header("Weapon Configuration")]
         [SerializeField]
-        private WeaponData currentWeapon;
+        private WeaponData currentWeapon = new WeaponData { type = WeaponType.AssaultRifle, name = "Assault Rifle", fireRate = 600, damagePerSecond = 100f, reloadTime = 0.5f };
 
         [Header("Ammo State")]
         [SerializeField]
@@ -231,12 +254,35 @@ namespace TimesBaddestCat.Core
         }
 
         // ICombatProvider implementation - redirect to internal methods
-        void ICombatProvider.FireWeapon() => FireWeaponInternal();
-        void ICombatProvider.ReloadWeapon() => ReloadWeaponInternal();
-        void ICombatProvider.EquipWeapon(WeaponType weaponType) => EquipWeapon(weaponType);
-        int ICombatProvider.GetCurrentAmmo() => currentAmmo;
-        int ICombatProvider.GetMaxAmmo() => maxAmmo;
-        bool ICombatProvider.IsReloading() => isReloading;
+        void ICombatProvider.FireWeapon()
+        {
+            FireWeaponInternal();
+        }
+
+        void ICombatProvider.ReloadWeapon()
+        {
+            ReloadWeaponInternal();
+        }
+
+        void ICombatProvider.EquipWeapon(WeaponType weaponType)
+        {
+            EquipWeapon(weaponType);
+        }
+
+        int ICombatProvider.GetCurrentAmmo()
+        {
+            return currentAmmo;
+        }
+
+        int ICombatProvider.GetMaxAmmo()
+        {
+            return maxAmmo;
+        }
+
+        bool ICombatProvider.IsReloading()
+        {
+            return isReloading;
+        }
 
         public bool CanDamage(IKillable target)
         {
@@ -326,56 +372,19 @@ namespace TimesBaddestCat.Core
             GUILayout.Label($"Projectiles Active: {GetActiveProjectileCount()}");
         }
         #endif
+
+        private int GetActiveProjectileCount()
+        {
+            int count = 0;
+            foreach (var proj in projectilePool)
+            {
+                if (proj != null && proj.activeInHierarchy) count++;
+            }
+            return count;
+        }
     }
 
-    #region Enums & Interfaces
-
-    [Header("Weapon Types")]
-    public enum WeaponType
-    {
-        AssaultRifle,
-        SMG,
-        Shotgun,
-        SniperRifle,
-        LMG
-    }
-
-    [Header("Body Parts")]
-    public enum BodyPart
-    {
-        Head,
-        Body,
-        Limbs
-    }
-
-    [Header("Weapon Data")]
-    [System.Serializable]
-    public class WeaponData
-    {
-        public WeaponType type;
-        public string name;
-        public int fireRate; // rounds per second
-        public float damagePerSecond;
-        public float reloadTime;
-    }
-
-    [Header("Combat Interfaces")]
-    public interface IComboProvider
-    {
-        void OnKillScored(Vector3 position);
-    }
-
-    [Header("Killable")]
-    public interface IKillable
-    {
-        void TakeDamage(float damage, Vector3 hitPosition, BodyPart bodyPart);
-        BodyPart GetBodyPart();
-        bool enabled { get; }
-    }
-
-    #endregion
-
-    #region Events
+    #region Supporting Types
 
     [Header("Combat Events")]
     public class WeaponFiredEvent : GameEventBase
